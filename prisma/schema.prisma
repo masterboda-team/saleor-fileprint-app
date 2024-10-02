@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AppSettings {
+  id             Int     @id @default(1)
+  mediaUrl       String  @map("media_url")
+  grayscalePrice Decimal @default(0) @map("grayscale_price")
+  colorPrice     Decimal @default(0) @map("color_price")
+
+  @@unique(fields: [id])
+  @@map("app_settings")
+}
+
+model UploadedFile {
+  id              Int       @id @default(autoincrement())
+  hash            String    @unique @db.VarChar(32)
+  extension       String    @db.VarChar(16)
+  name            String    @db.VarChar(127)
+  pageCount       Int?      @map("page_count")
+  coloredPages    Json?     @map("colored_pages")
+  created         DateTime? @db.Timestamptz(6)
+  description     String
+  textAttributeId Int?      @map("text_attribute_id")
+  baseUrl         String    @map("base_url") @db.VarChar(127)
+
+  @@map("uploaded_file")
+}
+
+model UploadedFileLine {
+  id                  Int       @id @default(autoincrement())
+  choosedColoredPages Json?     @map("choosed_colored_pages")
+  duplex              Boolean?
+  fileId              String?   @map("file_id") @db.VarChar(32)
+  role                String    @db.VarChar(16)
+  created             DateTime? @db.Timestamptz(6)
+  hash                String?   @db.VarChar(32)
+  copies              Int
+  name                String?   @db.VarChar(127)
+  checkoutId          String?   @map("checkout_id") @db.Uuid
+  orderToken          String?   @map("order_token") @db.Uuid
+  pagesPerSheet       Int?      @map("pages_per_sheet")
+  coverId             String?   @map("cover_id") @db.VarChar(32)
+
+  @@map("uploaded_file_line")
+}

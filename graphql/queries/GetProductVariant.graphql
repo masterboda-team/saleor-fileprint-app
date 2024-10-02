@@ -1,0 +1,21 @@
+query ProductVariant($productVariantId: ID, $channel: String) {
+  productVariant(id: $productVariantId, channel: $channel) {
+    name
+    pricing {
+      price {
+        gross {
+          currency
+          amount
+        }
+        net {
+          currency
+          amount
+        }
+        tax {
+          currency
+          amount
+        }
+      }
+    }
+  }
+}

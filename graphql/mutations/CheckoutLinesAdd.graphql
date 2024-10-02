@@ -1,0 +1,19 @@
+mutation CheckoutLinesAdd($lines: [CheckoutLineInput!]!, $id: ID) {
+  checkoutLinesAdd(lines: $lines, id: $id) {
+    checkout {
+      lines {
+        quantity
+        id
+        variant {
+          id
+          channel
+          name
+        }
+      }
+      id
+      channel {
+        id
+      }
+    }
+  }
+}

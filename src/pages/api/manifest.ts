@@ -19,7 +19,7 @@ export default createManifestHandler({
     const apiBaseURL = process.env.APP_API_BASE_URL ?? appBaseUrl;
 
     const manifest: AppManifest = {
-      name: 'Saleor App Template',
+      name: 'Saleor Fileprint App',
       tokenTargetUrl: `${apiBaseURL}/api/register`,
       appUrl: iframeBaseUrl,
       /**
@@ -33,6 +33,7 @@ export default createManifestHandler({
          * This can be removed
          */
         "MANAGE_ORDERS",
+        "HANDLE_CHECKOUTS",
       ],
       id: "saleor.app",
       version: packageJson.version,
@@ -50,7 +51,7 @@ export default createManifestHandler({
        * https://docs.saleor.io/docs/3.x/developer/extending/apps/extending-dashboard-with-apps
        */
       extensions: [],
-      author: "Saleor Commerce",
+      author: "kydef",
       brand: {
         logo: {
           default: `${apiBaseURL}/logo.png`,

@@ -1,22 +1,51 @@
 <div align="center">
-<img width="150" alt="saleor-app-template" src="https://user-images.githubusercontent.com/4006792/215185065-4ef2eda4-ca71-48cc-b14b-c776e0b491b6.png">
+<img width="150" alt="saleor-app-template" src="./public/logo.png">
 </div>
 
 <div align="center">
-  <h1>Saleor App Template</h1>
+  <h1>Saleor Fileprint App</h1>
 </div>
 
 <div align="center">
-  <p>Bare-bones boilerplate for writing Saleor Apps with Next.js.</p>
+  <p>Saleor APP that allows you to download files and order their printing.</p>
 </div>
 
 <div align="center">
-  <a href="https://saleor.io/">Website</a>
+  <a href="https://saleor.io/">Saleor</a>
   <span> | </span>
   <a href="https://docs.saleor.io/docs/3.x/">Docs</a>
-  <span> | </span>
-    <a href="https://githubbox.com/saleor/saleor-app-template">CodeSandbox</a>
 </div>
+
+### Setup
+
+First install packages:
+```
+pnpm install
+```
+
+This application uses <a href="https://mupdf.com/">mupdf-tools</a> utility, so it must be installed in the runtime environment:
+```
+sudo apt install mupdf-tools
+```
+
+You must also have <a href="https://www.postgresql.org/download/">Postgres</a> DB installed.
+Set DB connection string in DATABASE_URL
+
+Run to generate prisma client:
+```
+prisma generate
+```
+
+For run locally:
+```
+pnpm run dev
+```
+
+### Environment variables
+
+- DATABASE_URL="postgres://username:password@host:port/dbname?schema=public"
+- SALEOR_API_URL="your-saleor-url/graphql/"
+- NEXT_MEDIA_DIR="uploaded/files/dir"
 
 ### What is Saleor App
 

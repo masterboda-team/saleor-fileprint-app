@@ -7,7 +7,7 @@
 </div>
 
 <div align="center">
-  <p>Saleor APP that allows you to download files and order their printing.</p>
+  <p>Saleor APP that allows you to upload files and order their printing.</p>
 </div>
 
 <div align="center">

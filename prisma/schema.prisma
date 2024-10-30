@@ -7,29 +7,37 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model AppSettings {
-  id             Int     @id @default(1)
-  mediaUrl       String  @map("media_url")
-  grayscalePrice Decimal @default(0) @map("grayscale_price")
-  colorPrice     Decimal @default(0) @map("color_price")
+model PrintProducts {
+  id                     Int     @id @default(autoincrement())
+  slug                   String  @unique
+  coverProductId         String? @map("cover_product_id")
+  pageProductId          String  @map("pages_product_id")
+  grayscalePageVariantId String  @map("grayscale_page_variant_id")
+  coloredPageVariantId   String  @map("colored_page_variant_id")
 
-  @@unique(fields: [id])
-  @@map("app_settings")
+  @@map("print_products")
 }
 
 model UploadedFile {
-  id              Int       @id @default(autoincrement())
-  hash            String    @unique @db.VarChar(32)
-  extension       String    @db.VarChar(16)
-  name            String    @db.VarChar(127)
-  pageCount       Int?      @map("page_count")
-  coloredPages    Json?     @map("colored_pages")
-  created         DateTime? @db.Timestamptz(6)
+  id              Int           @id @default(autoincrement())
+  hash            String        @unique @db.VarChar(32)
+  extension       String        @db.VarChar(16)
+  name            String        @db.VarChar(127)
+  pageCount       Int?          @map("page_count")
+  coloredPages    Json?         @map("colored_pages")
+  created         DateTime?     @db.Timestamptz(6)
   description     String
-  textAttributeId Int?      @map("text_attribute_id")
-  baseUrl         String    @map("base_url") @db.VarChar(127)
+  textAttributeId Int?          @map("text_attribute_id")
+  baseUrl         String        @map("base_url") @db.VarChar(127)
+  processStatus   ProcessStatus @default(NOT_PROCESSED) @map("process_status")
 
   @@map("uploaded_file")
+}
+
+enum ProcessStatus {
+  DONE
+  ERROR
+  NOT_PROCESSED
 }
 
 model UploadedFileLine {

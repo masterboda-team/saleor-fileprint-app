@@ -1,206 +1,111 @@
-import { actions, useAppBridge } from "@saleor/app-sdk/app-bridge";
-import { Box, Button, Input, Text } from "@saleor/macaw-ui";
-import { NextPage } from "next";
-import Link from "next/link";
-import { MouseEventHandler, useEffect, useState } from "react";
+import { useAppBridge } from "@saleor/app-sdk/app-bridge";
+import { Box, Button, Select, Text } from "@saleor/macaw-ui";
+import { GetServerSideProps, NextPage } from "next";
+import { useEffect, useState } from "react";
+import { AddProductModal } from "../components/AddProductModal/AddProductModal";
+import {
+  FoundProductFragment,
+  GetProductsQuery,
+  GetProductsQueryVariables,
+  GetProductsDocument,
+  ChannelsDocument,
+  ChannelsQuery,
+  ChannelsQueryVariables,
+} from "../../generated/graphql";
+import { getSaleorClient } from "../app/connections";
+import { deletePrintProductQuery, getPrintProductsQuery } from "../app/print-products/queries";
+import { GetPrintProductsResponse } from "../app/print-products/get-print-products.handler";
 
-const AddToSaleorForm = () => (
-  <Box
-    as={"form"}
-    display={"flex"}
-    alignItems={"center"}
-    gap={4}
-    onSubmit={(event) => {
-      event.preventDefault();
+interface PageProps {
+  products: FoundProductFragment[];
+  channels: ChannelsQuery["channels"];
+}
 
-      const saleorUrl = new FormData(event.currentTarget as HTMLFormElement).get("saleor-url");
-      const manifestUrl = new URL("/api/manifest", window.location.origin);
-      const redirectUrl = new URL(
-        `/dashboard/apps/install?manifestUrl=${manifestUrl}`,
-        saleorUrl as string
-      ).href;
+export const getServerSideProps = (async () => {
+  const gqlClient = await getSaleorClient();
 
-      window.open(redirectUrl, "_blank");
-    }}
-  >
-    <Input type="url" required label="Saleor URL" name="saleor-url" />
-    <Button type="submit">Add to Saleor</Button>
-  </Box>
-);
+  const productsResponse = await gqlClient
+    .query<GetProductsQuery, GetProductsQueryVariables>(GetProductsDocument, {
+      first: 100, // NOTE: 100 is the maximum number of products that can be fetched
+    })
+    .toPromise();
+  const products = productsResponse.data?.products?.edges?.map(({ node }) => node) || [];
 
-/**
- * This is page publicly accessible from your app.
- * You should probably remove it.
- */
-const IndexPage: NextPage = () => {
+  const channelsResponse = await gqlClient
+    .query<ChannelsQuery, ChannelsQueryVariables>(ChannelsDocument, {})
+    .toPromise();
+  const channels = channelsResponse.data?.channels || [];
+
+  return { props: { products, channels } };
+}) satisfies GetServerSideProps<PageProps>;
+
+const IndexPage: NextPage<PageProps> = ({ products, channels }) => {
   const { appBridgeState, appBridge } = useAppBridge();
   const [mounted, setMounted] = useState(false);
+  const [printProducts, setPrintProducts] = useState<GetPrintProductsResponse>([]);
+  const [channel, setChannel] = useState<{ value: string; label: string } | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const handleLinkClick: MouseEventHandler<HTMLAnchorElement> = (e) => {
-    /**
-     * In iframe, link can't be opened in new tab, so Dashboard must be a proxy
-     */
-    if (appBridgeState?.ready) {
-      e.preventDefault();
+  useEffect(() => {
+    if (!appBridge) return;
+    refetchPrintProducts();
+  }, [appBridge, channel]);
 
-      appBridge?.dispatch(
-        actions.Redirect({
-          newContext: true,
-          to: e.currentTarget.href,
-        })
-      );
-    }
+  function refetchPrintProducts() {
+    if (!channel) return;
+    getPrintProductsQuery(channel.value).then(setPrintProducts);
+  }
 
-    /**
-     * Otherwise, assume app is accessed outside of Dashboard, so href attribute on <a> will work
-     */
-  };
+  async function deletePrintProduct(slug: string) {
+    if (!channel) return;
+    await deletePrintProductQuery(slug);
+    refetchPrintProducts();
+  }
 
-  const isLocalHost = global.location.href.includes("localhost");
+  if (!appBridgeState?.ready || !mounted) {
+    return (
+      <Box padding={8}>
+        <Text size={11}>Saleor File Print App deployed successfully 🚀</Text>
+        <Text marginBottom={4} as={"p"}>
+          Install this app in your Dashboard and get extra powers!
+        </Text>
+      </Box>
+    );
+  }
 
   return (
-    <Box padding={8}>
-      <Text size={11}>Welcome to Saleor App Template (Next.js) 🚀</Text>
-      <Text as={"p"} marginY={4}>
-        Saleor App Template is a minimalistic boilerplate that provides a working example of a
-        Saleor app.
-      </Text>
-      {appBridgeState?.ready && mounted && (
-        <Link href="/actions">
-          <Button variant="secondary">See what your app can do →</Button>
-        </Link>
-      )}
-
-      <Text as={"p"} marginTop={8}>
-        Explore the App Template by visiting:
-      </Text>
-      <ul>
-        <li>
-          <code>/src/pages/api/manifest</code> - the{" "}
-          <a
-            href="https://docs.saleor.io/docs/3.x/developer/extending/apps/manifest"
-            target="_blank"
-            rel="noreferrer"
-          >
-            App Manifest
-          </a>
-          .
-        </li>
-        <li>
-          <code>/src/pages/api/webhooks/order-created</code> - an example <code>ORDER_CREATED</code>{" "}
-          webhook handler.
-        </li>
-        <li>
-          <code>/graphql</code> - the pre-defined GraphQL queries.
-        </li>
-        <li>
-          <code>/generated/graphql.ts</code> - the code generated for those queries by{" "}
-          <a target="_blank" rel="noreferrer" href="https://the-guild.dev/graphql/codegen">
-            GraphQL Code Generator
-          </a>
-          .
-        </li>
-      </ul>
-      <Text size={8} marginTop={8} as={"h2"}>
-        Resources
-      </Text>
-      <ul>
-        <li>
-          <a
-            onClick={handleLinkClick}
-            target="_blank"
-            href="https://docs.saleor.io/docs/3.x/developer/extending/apps/key-concepts"
-            rel="noreferrer"
-          >
-            <Text color={"info1"}>Apps documentation </Text>
-          </a>
-        </li>
-        <li>
-          <a
-            onClick={handleLinkClick}
-            target="_blank"
-            rel="noreferrer"
-            href="https://docs.saleor.io/docs/3.x/developer/extending/apps/developing-with-tunnels"
-          >
-            <Text color={"info1"}>Tunneling the app</Text>
-          </a>
-        </li>
-        <li>
-          <a
-            onClick={handleLinkClick}
-            target="_blank"
-            rel="noreferrer"
-            href="https://github.com/saleor/app-examples"
-          >
-            <Text color={"info1"}>App Examples repository</Text>
-          </a>
-        </li>
-
-        <li>
-          <a
-            onClick={handleLinkClick}
-            target="_blank"
-            rel="noreferrer"
-            href="https://github.com/saleor/saleor-app-sdk"
-          >
-            <Text color={"info1"}>Saleor App SDK</Text>
-          </a>
-        </li>
-
-        <li>
-          <a
-            onClick={handleLinkClick}
-            target="_blank"
-            href="https://github.com/saleor/saleor-cli"
-            rel="noreferrer"
-          >
-            <Text color={"info1"}>Saleor CLI</Text>
-          </a>
-        </li>
-        <li>
-          <a
-            onClick={handleLinkClick}
-            target="_blank"
-            href="https://github.com/saleor/apps"
-            rel="noreferrer"
-          >
-            <Text color={"info1"}>Saleor App Store - official apps by Saleor Team</Text>
-          </a>
-        </li>
-        <li>
-          <a
-            onClick={handleLinkClick}
-            target="_blank"
-            href="https://macaw-ui-next.vercel.app/?path=/docs/getting-started-installation--docs"
-            rel="noreferrer"
-          >
-            <Text color={"info1"}>Macaw UI - official Saleor UI library</Text>
-          </a>
-        </li>
-        <li>
-          <a
-            onClick={handleLinkClick}
-            target="_blank"
-            href="https://nextjs.org/docs"
-            rel="noreferrer"
-          >
-            <Text color={"info1"}>Next.js documentation</Text>
-          </a>
-        </li>
-      </ul>
-
-      {mounted && !isLocalHost && !appBridgeState?.ready && (
-        <>
-          <Text marginBottom={4} as={"p"}>
-            Install this app in your Dashboard and get extra powers!
-          </Text>
-          <AddToSaleorForm />
-        </>
-      )}
+    <Box padding={8} display={"flex"} flexDirection={"column"} gap={6}>
+      <Select
+        label="Select channel"
+        size="medium"
+        value={channel}
+        onChange={setChannel}
+        options={channels?.map(c => ({ value: c.slug, label: c.name })) || []}
+        style={{ maxWidth: "300px" }}
+      />
+      <Text size={9}>Print Products:</Text>
+      {printProducts.map((product: any) => (
+        <Box
+          display={"flex"}
+          flexDirection={"column"}
+          key={product.id}
+          gap={2}
+          borderWidth={1}
+          borderStyle={"solid"}
+          borderColor={"default2"}
+          padding={4}
+          style={{ width: "300px" }}
+        >
+          <Text as={"p"}>slug: {product?.slug}</Text>
+          <Text as={"p"}>cover: {product?.coverProduct?.name}</Text>
+          <Text as={"p"}>page: {product?.pageProduct?.name}</Text>
+          <Button variant="secondary" onClick={() => deletePrintProduct(product.slug)}>Delete</Button>
+        </Box>
+      ))}
+      <AddProductModal products={products} onSuccess={refetchPrintProducts} />
     </Box>
   );
 };

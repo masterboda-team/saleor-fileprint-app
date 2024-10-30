@@ -2,19 +2,14 @@ import { NextApiRequest, NextApiResponse } from "next";
 import {
   CheckoutLinesAddMutation,
   CheckoutLinesAddMutationVariables,
-  ProductVariantQuery,
-  ProductVariantQueryVariables,
+  GetProductsDocument,
+  GetProductsQuery,
+  GetProductsQueryVariables,
   UntypedCheckoutLinesAddDocument,
-  UntypedProductVariantDocument,
 } from "../../../generated/graphql";
 import { getPrisma, getSaleorClient } from "../connections";
 import { sendData, sendInternalError, sendNotFound, sendValidationError } from "../api.utils";
 import _ from "lodash";
-
-const prisma = getPrisma();
-
-const GRAYSCALE_PRISE = 2; // TODO: make configurable
-const COLOR_PRISE = 4; // TODO: make configurable
 
 /**
  * POST /api/pdf/add-to-checkout
@@ -23,6 +18,7 @@ const COLOR_PRISE = 4; // TODO: make configurable
  * @param req.body.hash - The hash of the uploaded PDF file.
  * @param req.body.checkoutId - The ID of the checkout to add the PDF to.
  * @param req.body.coloredPages - The pages of the PDF that should be printed in color.
+ * @param req.body.slug - The slug of the PrintProduct to use.
  * @param req.body.coverVariantId - The ID of the product variant to use for the cover.
  * @param req.body.channel - The channel to use for the checkout.
  * @param req.body.quantity - The quantity of the printed PDF to add.
@@ -43,33 +39,57 @@ export default async function AddPdfToCheckoutHandler(
   const checkoutId: string = body.checkoutId;
   const coloredPages: number[] = body.coloredPages;
   const coverVariantId: string = body.coverVariantId;
+  const slug: string = body.slug;
   const channel: string = body.channel;
   const quantity: number = body.quantity;
 
   // Fetch the uploaded file from the database
+  const prisma = getPrisma();
   const uploadedFile = await prisma.uploadedFile.findUnique({ where: { hash } });
   if (!uploadedFile?.pageCount) return sendNotFound(res, "File not found");
 
-  // Fetch product variant
+  // Fetch print product
+  const printProduct = await prisma.printProducts.findUnique({ where: { slug } });
+  if (!printProduct) return sendNotFound(res, "Product not found");
+  if (!printProduct.coverProductId) return sendNotFound(res, "Cover product not found");
+
+  // Fetch cover and print products
   const gqlClient = await getSaleorClient();
-  const variantResponse = await gqlClient
-    .query<ProductVariantQuery, ProductVariantQueryVariables>(UntypedProductVariantDocument, {
-      productVariantId: coverVariantId,
-      channel: channel,
+  const productsResponse = await gqlClient
+    .query<GetProductsQuery, GetProductsQueryVariables>(GetProductsDocument, {
+      first: 2,
+      filter: {
+        ids: [printProduct.pageProductId, printProduct.coverProductId],
+      },
+      channel,
     })
     .toPromise();
-  if (!variantResponse?.data?.productVariant) return sendNotFound(res, "Cover variant not found");
-  const variant = variantResponse.data.productVariant;
+  const products = productsResponse.data?.products?.edges?.map(({ node }) => node) || [];
+  if (products?.length !== 2) return sendNotFound(res, "Product not found");
+
+  // Get variants
+  const coverProduct = products.find((product) => product.id === printProduct.coverProductId);
+  if (!coverProduct) return sendNotFound(res, "Cover product not found");
+  const pageProduct = products.find((product) => product.id === printProduct.pageProductId);
+  if (!pageProduct) return sendNotFound(res, "Page product not found");
+  const colorPageVariant = pageProduct.variants?.find((variant) => variant.id === printProduct.coloredPageVariantId);
+  if (!colorPageVariant) return sendNotFound(res, "Colored page variant not found");
+  const grayscalePageVariant = pageProduct.variants?.find((variant) => variant.id === printProduct.grayscalePageVariantId);
+  if (!grayscalePageVariant) return sendNotFound(res, "Grayscale page variant not found"); 
+  const coverVariant = coverProduct.variants?.find((variant) => variant.id === coverVariantId);
+  if (!coverVariant) return sendNotFound(res, "Cover variant not found");
 
   // Calculate
+  const coloredPagePrice = colorPageVariant.pricing?.price?.gross.amount || 0;
+  const grayscalePagePrice = grayscalePageVariant.pricing?.price?.gross.amount || 0;
+  const coverPrice = coverVariant.pricing?.price?.gross.amount || 0;
   if (uploadedFile.pageCount < 1) return sendInternalError(res, "Invalid page count");
   const coloredPagesCount = coloredPages.length;
   const grayscalePagesCount = uploadedFile.pageCount - coloredPages.length;
   if (grayscalePagesCount < 0) return sendInternalError(res, "Invalid colored page count");
-  const coloredPrice = coloredPagesCount * COLOR_PRISE;
-  const grayscalePrice = grayscalePagesCount * GRAYSCALE_PRISE;
-  const coverPrise = variant.pricing?.price?.gross.amount || 0;
-  const totalPrice = coverPrise + coloredPrice + grayscalePrice;
+  const coloredPrice = coloredPagesCount * coloredPagePrice;
+  const grayscalePrice = grayscalePagesCount * grayscalePagePrice;
+  const totalPrice = coverPrice + coloredPrice + grayscalePrice;
 
   // Add to checkout
   const checkoutResponse = await gqlClient
@@ -120,6 +140,10 @@ function validate(res: NextApiResponse, body: any): boolean {
   }
   if (!_.isString(body?.coverVariantId)) {
     sendValidationError(res, "Invalid coverVariantId");
+    return false;
+  }
+  if (!_.isString(body?.slug)) {
+    sendValidationError(res, "Invalid slug");
     return false;
   }
   if (!_.isString(body?.channel)) {

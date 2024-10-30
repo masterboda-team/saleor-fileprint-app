@@ -1,0 +1,38 @@
+fragment FoundVariant on ProductVariant {
+  id
+  name
+  quantityAvailable
+  pricing {
+    price {
+      gross {
+        amount
+        currency
+      }
+    }
+  }
+  media {
+    id
+    type
+    alt
+    url
+  }
+}
+
+fragment FoundProduct on Product {
+  id
+  name
+  variants {
+    ...FoundVariant
+  }
+}
+
+query GetProducts($first: Int, $filter: ProductFilterInput, $channel: String) {
+  products(first: $first, filter: $filter, channel: $channel) {
+    edges {
+      node {
+        ...FoundProduct
+      }
+    }
+    totalCount
+  }
+}

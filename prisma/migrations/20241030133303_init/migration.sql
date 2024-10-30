@@ -1,9 +1,16 @@
--- CreateTable
-CREATE TABLE "app_settings" (
-    "id" INTEGER NOT NULL DEFAULT 1,
-    "media_url" TEXT NOT NULL,
+-- CreateEnum
+CREATE TYPE "ProcessStatus" AS ENUM ('DONE', 'ERROR', 'NOT_PROCESSED');
 
-    CONSTRAINT "app_settings_pkey" PRIMARY KEY ("id")
+-- CreateTable
+CREATE TABLE "print_products" (
+    "id" SERIAL NOT NULL,
+    "slug" TEXT NOT NULL,
+    "cover_product_id" TEXT,
+    "pages_product_id" TEXT NOT NULL,
+    "grayscale_page_variant_id" TEXT NOT NULL,
+    "colored_page_variant_id" TEXT NOT NULL,
+
+    CONSTRAINT "print_products_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -18,6 +25,7 @@ CREATE TABLE "uploaded_file" (
     "description" TEXT NOT NULL,
     "text_attribute_id" INTEGER,
     "base_url" VARCHAR(127) NOT NULL,
+    "process_status" "ProcessStatus" NOT NULL DEFAULT 'NOT_PROCESSED',
 
     CONSTRAINT "uploaded_file_pkey" PRIMARY KEY ("id")
 );
@@ -42,7 +50,7 @@ CREATE TABLE "uploaded_file_line" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "app_settings_id_key" ON "app_settings"("id");
+CREATE UNIQUE INDEX "print_products_slug_key" ON "print_products"("slug");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "uploaded_file_hash_key" ON "uploaded_file"("hash");

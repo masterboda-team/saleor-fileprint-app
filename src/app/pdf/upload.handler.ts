@@ -53,7 +53,7 @@ export default async function uploadPdfHandler(
     },
   });
   if (uploadedFile) {
-    const coverUrl = `${process.env.PUBLIC_URL}media/${file.hash}/cover.png`;
+    const coverUrl = `${process.env.NEXT_PUBLIC_URL}media/${file.hash}/cover.png`;
     return sendData<UploadPdfResponse>(res, {
       coverUrl: coverUrl,
       hash: file.hash,
@@ -63,7 +63,7 @@ export default async function uploadPdfHandler(
   // Convert cover and send response
   const { totalPages } = await getPdfInfo(file.filepath);
   const fileName = await createCover({ filePath: file.filepath, outputDir });
-  const coverUrl = `${process.env.PUBLIC_URL}media/${file.hash}/${fileName}`;
+  const coverUrl = `${process.env.NEXT_PUBLIC_URL}media/${file.hash}/${fileName}`;
 
   // Add file to DB
   await prisma.uploadedFile.create({

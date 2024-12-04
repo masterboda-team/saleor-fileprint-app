@@ -15,7 +15,9 @@ switch (process.env.APL) {
     apl = new UpstashAPL();
     break;
   default:
-    apl = new FileAPL();
+    apl = new FileAPL({
+      fileName: process.env.APL_FILE_PATH,
+    });
 }
 
 export const saleorApp = new SaleorApp({

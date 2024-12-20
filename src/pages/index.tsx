@@ -27,12 +27,12 @@ export const getServerSideProps = (async () => {
   const productsResponse = await gqlClient
     .query<GetProductsQuery, GetProductsQueryVariables>(GetProductsDocument, {
       first: 100, // NOTE: 100 is the maximum number of products that can be fetched
-    })
+    }, { requestPolicy: 'network-only' })
     .toPromise();
   const products = productsResponse.data?.products?.edges?.map(({ node }) => node) || [];
 
   const channelsResponse = await gqlClient
-    .query<ChannelsQuery, ChannelsQueryVariables>(ChannelsDocument, {})
+    .query<ChannelsQuery, ChannelsQueryVariables>(ChannelsDocument, {}, { requestPolicy: 'network-only' })
     .toPromise();
   const channels = channelsResponse.data?.channels || [];
 

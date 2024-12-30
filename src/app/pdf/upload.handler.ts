@@ -37,14 +37,17 @@ export default async function uploadPdfHandler(
   }
 
   const file = files[0];
+  const originalFilename = file.originalFilename as string;
   const outputDir = path.join(process.env.NEXT_MEDIA_DIR, file.hash);
+  const fileSavedPath = `${outputDir}/${file.hash}`;
 
   // Make dir
   await fs.mkdir(outputDir, { recursive: true });
 
   // Upload file
   const fileData = await fs.readFile(file.filepath);
-  await fs.writeFile(`${outputDir}/${file.originalFilename}`, fileData as any); // TODO: fix type
+  await fs.writeFile(fileSavedPath, fileData as any); // TODO: fix type
+  file.filepath = fileSavedPath;
 
   // Check if file exists
   const uploadedFile = await prisma.uploadedFile.findUnique({
@@ -69,10 +72,10 @@ export default async function uploadPdfHandler(
   await prisma.uploadedFile.create({
     data: {
       hash: file.hash as string,
-      name: file.originalFilename as string,
+      name: originalFilename,
       extension: path.extname(file.originalFilename as string),
       description: "",
-      baseUrl: `${file.hash}/${file.originalFilename}`,
+      baseUrl: `${file.hash}/${file.hash}`,
       pageCount: totalPages,
       created: new Date(),
       coloredPages: JSON.stringify([]),

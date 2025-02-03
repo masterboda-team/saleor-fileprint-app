@@ -119,6 +119,10 @@ export default async function AddPdfToCheckoutHandler(
           value: uploadedFile.hash,
         },
         {
+          key: "extension",
+          value: uploadedFile.extension || "",
+        },
+        {
           key: "coloredPages",
           value: variant.coloredPages.join(","),
         },

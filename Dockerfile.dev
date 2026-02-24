@@ -1,0 +1,70 @@
+FROM node:22-bullseye AS base
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV="development"
+ENV ALLOW_ALL_CORS=true
+
+ARG APL_FILE_PATH
+ENV APL_FILE_PATH=${APL_FILE_PATH}
+
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
+ARG SALEOR_API_URL
+ENV SALEOR_API_URL=${SALEOR_API_URL}
+
+ARG SALEOR_APP_TOKEN
+ENV SALEOR_APP_TOKEN=${SALEOR_APP_TOKEN}
+
+ARG SALEOR_APP_ID
+ENV SALEOR_APP_ID=${SALEOR_APP_ID}
+
+ARG NEXT_PUBLIC_URL
+ENV NEXT_PUBLIC_URL=${NEXT_PUBLIC_URL}
+
+ARG NEXT_MEDIA_DIR
+ENV NEXT_MEDIA_DIR=${NEXT_MEDIA_DIR}
+
+ARG NEXT_BASE_PATH
+ENV NEXT_BASE_PATH=${NEXT_BASE_PATH}
+
+ARG NODE_TLS_REJECT_UNAUTHORIZED
+ENV NODE_TLS_REJECT_UNAUTHORIZED=${NODE_TLS_REJECT_UNAUTHORIZED:-1}
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml ./
+
+RUN export PNPM_VERSION=$(cat package.json | jq '.engines.pnpm' | sed -E 's/[^0-9.]//g')
+RUN npm install -g pnpm@$PNPM_VERSION
+
+# Install dependencies only when needed
+FROM base AS deps
+
+WORKDIR /app
+
+COPY . .
+
+RUN pnpm i --frozen-lockfile --prefer-offline
+
+# Run stage, run the application
+FROM base AS runnner
+
+RUN apt update && apt install -y mupdf-tools libvips-dev libvips
+# RUN pnpm add @img/sharp-libvips-linuxmusl-x64
+# RUN pnpm add sharp
+
+COPY --from=deps /app /app
+
+WORKDIR /app
+
+RUN pnpm prisma generate
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
+
+ENV NODE_ENV="development"
+
+CMD ["sh", "-c", "pnpm dev --hostname 0.0.0.0 --port 3000"]

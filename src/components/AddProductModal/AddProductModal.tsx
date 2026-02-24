@@ -34,7 +34,7 @@ export function AddProductModal({ products = [], onSuccess }: AddProductModalPro
     if (!slug || !pageProductId || !grayscalePageVariantId || !colorVariantId) {
       return // TODO: show error
     }
-    await fetch('/api/print-products', {
+    await fetch(`${process.env.NEXT_PUBLIC_URL}/api/print-products`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
